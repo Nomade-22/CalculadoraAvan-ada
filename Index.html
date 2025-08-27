@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora CSP (Custo por Hora) — Multprest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827; /* gray-900 */
+      --muted:#94a3b8; /* slate-400 */
+      --text:#e5e7eb; /* gray-200 */
+      --brand:#22d3ee; /* cyan-400 */
+      --accent:#38bdf8; /* sky-400 */
+      --ok:#22c55e; /* green-500 */
+      --warn:#f59e0b; /* amber-500 */
+      --danger:#ef4444; /* red-500 */
+      --card:#0b1222; /* deeper */
+      --ring: rgba(56,189,248,.45);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 80% -10%, rgba(34,211,238,.06), transparent 60%),
+                                radial-gradient(900px 700px at -20% 10%, rgba(56,189,248,.06), transparent 50%),
+                                var(--bg);
+      color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height:1.45;
+    }
+    header{position:sticky;top:0;background:rgba(15,23,42,.75);backdrop-filter:saturate(160%) blur(8px);border-bottom:1px solid rgba(148,163,184,.12);z-index:10}
+    .wrap{max-width:1160px;margin:0 auto;padding:16px 20px}
+    h1{font-size: clamp(22px, 2.6vw, 32px);margin:6px 0 2px;font-weight:700;letter-spacing:.2px}
+    .subtitle{color:var(--muted);font-size:14px}
+
+    .grid{display:grid;grid-template-columns: repeat(12,1fr); gap:16px; margin-top:18px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.008)); border:1px solid rgba(148,163,184,.14); border-radius:16px; padding:16px}
+    .card h2{font-size:14px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.12em;margin:0 0 8px;font-weight:700}
+
+    .inputs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .full{grid-column:1/-1}
+
+    label{display:flex; flex-direction:column; gap:6px; font-size:12px; color:#cbd5e1}
+    input, select{width:100%; padding:12px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.18);
+      background:#0a1222; color:var(--text); outline:none; font-size:14px; transition:.2s ease box-shadow, .2s ease border-color}
+    input:focus{box-shadow:0 0 0 4px var(--ring); border-color:var(--accent)}
+    .suffix{color:var(--muted);font-size:12px;margin-left:4px}
+
+    .kpi{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px}
+    .kpi .item{background:linear-gradient(180deg, rgba(56,189,248,.10), rgba(56,189,248,.02)); border:1px solid rgba(56,189,248,.2); border-radius:14px; padding:14px}
+    .kpi .item h3{margin:0;font-size:12px;color:#bae6fd; text-transform:uppercase; letter-spacing:.12em}
+    .kpi .item .val{font-weight:800;font-size:20px;margin-top:6px}
+
+    .muted{color:var(--muted);font-size:12px}
+    .row{display:flex; gap:10px; align-items:center}
+    .btn{appearance:none; border:1px solid rgba(148,163,184,.2); background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600}
+    .btn:hover{border-color:#60a5fa}
+    .btn.primary{border-color:transparent; background:linear-gradient(90deg, var(--accent), var(--brand)); color:#071521}
+
+    .table{width:100%; border-collapse:separate; border-spacing:0 8px; font-size:14px}
+    .table th{color:#a5b4fc; font-weight:700; text-align:left; padding:6px 10px}
+    .table td{background:#0a1222; border:1px solid rgba(148,163,184,.14); padding:10px; }
+    .table tr td:first-child{border-radius:12px 0 0 12px}
+    .table tr td:last-child{border-radius:0 12px 12px 0}
+
+    footer{color:var(--muted); font-size:12px; padding:20px 0; text-align:center}
+
+    @media (max-width: 880px){
+      .grid{grid-template-columns:1fr}
+      .inputs{grid-template-columns:1fr}
+      .kpi{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Calculadora de CSP por Hora (Prestação de Serviços)</h1>
+      <div class="subtitle">Modelo compacto — custo/hora real, preço/hora com lucro e impostos, e projeção por equipe. Formatos em R$ e % para o Brasil.</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- KPIs principais -->
+    <section class="kpi" id="kpis">
+      <div class="item">
+        <h3>Custo por Hora (sem lucro)</h3>
+        <div class="val" id="kpi_custo_hora">R$ 0,00</div>
+        <div class="muted" id="kpi_custo_mes">/ mês: R$ 0,00</div>
+      </div>
+      <div class="item">
+        <h3>Preço por Hora (com lucro)</h3>
+        <div class="val" id="kpi_preco_hora_sem_imposto">R$ 0,00</div>
+        <div class="muted">Antes de impostos</div>
+      </div>
+      <div class="item">
+        <h3>Preço Final por Hora</h3>
+        <div class="val" id="kpi_preco_hora_final">R$ 0,00</div>
+        <div class="muted" id="kpi_valor_dia">/ dia</div>
+      </div>
+      <div class="item">
+        <h3>Lucro Bruto por Hora</h3>
+        <div class="val" id="kpi_lucro_hora">R$ 0,00</div>
+        <div class="muted" id="kpi_lucro_mes">/ mês: R$ 0,00</div>
+      </div>
+    </section>
+
+    <div class="grid" style="margin-top:18px">
+      <!-- Salário & Adicionais -->
+      <section class="card" style="grid-column: span 6;">
+        <h2>Salário & Adicionais (mensal)</h2>
+        <div class="inputs">
+          <label>Salário base
+            <input id="salario_base" data-type="money" placeholder="R$ 0,00" value="R$ 2.891,00">
+          </label>
+          <label>Insalubridade
+            <input id="insalubridade" data-type="money" placeholder="R$ 0,00" value="R$ 282,40">
+          </label>
+          <label>Prêmio/Assiduidade
+            <input id="premio" data-type="money" placeholder="R$ 0,00" value="R$ 315,00">
+          </label>
+          <label>Outros adicionais
+            <input id="adicionais" data-type="money" placeholder="R$ 0,00" value="R$ 0,00">
+          </label>
+          <div class="full muted">O <strong>salário real</strong> é a soma dos campos acima.</div>
+        </div>
+      </section>
+
+      <!-- Encargos % -->
+      <section class="card" style="grid-column: span 6;">
+        <h2>Encargos sobre Salário (%)</h2>
+        <div class="inputs">
+          <label>INSS (%)
+            <input id="p_inss" type="number" step="0.01" value="11">
+          </label>
+          <label>FGTS (%)
+            <input id="p_fgts" type="number" step="0.01" value="8">
+          </label>
+          <label>Férias (%)
+            <input id="p_ferias" type="number" step="0.01" value="33">
+          </label>
+          <label>13º (%)
+            <input id="p_13" type="number" step="0.01" value="8.33">
+          </label>
+          <label>Rescisão/Provisão (%)
+            <input id="p_rescisao" type="number" step="0.01" value="30">
+          </label>
+          <label>Outros (%)
+            <input id="p_outros" type="number" step="0.01" value="0">
+          </label>
+        </div>
+        <div class="muted" id="encargos_total_text">Total de encargos: 0% (editável)</div>
+      </section>
+
+      <!-- Custos variáveis -->
+      <section class="card" style="grid-column: span 6;">
+        <h2>Custos Variáveis (mensal)</h2>
+        <div class="inputs">
+          <label>Uniforme/EPI
+            <input id="uniforme" data-type="money" placeholder="R$ 0,00" value="R$ 350,00">
+          </label>
+          <label>Transporte
+            <input id="transporte" data-type="money" placeholder="R$ 0,00" value="R$ 0,00">
+          </label>
+          <label>Exames / ASO (rateio mensal)
+            <input id="exames" data-type="money" placeholder="R$ 0,00" value="R$ 41,00">
+          </label>
+          <label>Ferramentas (manutenção/aluguel)
+            <input id="ferramentas" data-type="money" placeholder="R$ 0,00" value="R$ 300,00">
+          </label>
+        </div>
+      </section>
+
+      <!-- Fixos & Horas -->
+      <section class="card" style="grid-column: span 6;">
+        <h2>Custos Fixos & Horas</h2>
+        <div class="inputs">
+          <label>Total de custos fixos (mensal)
+            <input id="fixos_total" data-type="money" placeholder="R$ 0,00" value="R$ 22.598,00">
+          </label>
+          <label>Nº de funcionários (para rateio)
+            <input id="qtd_funcionarios" type="number" min="1" value="10">
+          </label>
+          <label>Incluir rateio dos fixos no custo/hora?
+            <select id="incluir_rateio"><option value="sim" selected>Sim</option><option value="nao">Não</option></select>
+          </label>
+          <label>Horas por dia
+            <input id="horas_dia" type="number" step="0.1" value="8.8">
+          </label>
+          <label>Dias no mês
+            <input id="dias_mes" type="number" step="1" value="25">
+          </label>
+          <label class="full">Horas/mês (auto)
+            <input id="horas_mes" type="number" step="1" value="220" readonly>
+          </label>
+        </div>
+      </section>
+
+      <!-- Preço de venda -->
+      <section class="card" style="grid-column: span 6;">
+        <h2>Preço de Venda</h2>
+        <div class="inputs">
+          <label>Lucro (%) sobre custo
+            <input id="p_lucro" type="number" step="0.01" value="30">
+          </label>
+          <label>Impostos sobre faturamento (%)
+            <input id="p_impostos" type="number" step="0.01" value="30">
+          </label>
+          <label>Troca de Nota / Taxas (%)
+            <input id="p_taxas" type="number" step="0.01" value="12">
+          </label>
+        </div>
+      </section>
+
+      <!-- Projeção por equipe -->
+      <section class="card" style="grid-column: span 6;">
+        <h2>Projeção por Equipe</h2>
+        <div class="inputs">
+          <label>Quantidade de funcionários na obra
+            <input id="qtd_equipe" type="number" min="1" value="4">
+          </label>
+          <label>Horas vendidas/mês por funcionário
+            <input id="horas_vendidas" type="number" step="1" value="220">
+          </label>
+        </div>
+        <table class="table" style="margin-top:10px">
+          <thead>
+            <tr><th>Indicador</th><th>Valor</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>CSP total (custo)</td><td id="t_csp">R$ 0,00</td></tr>
+            <tr><td>Receita total (preço final)</td><td id="t_receita">R$ 0,00</td></tr>
+            <tr><td>Lucro bruto total</td><td id="t_lucro">R$ 0,00</td></tr>
+          </tbody>
+        </table>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="btnReset">Limpar valores</button>
+          <button class="btn primary" id="btnPrint">Imprimir / PDF</button>
+        </div>
+      </section>
+
+      <!-- Breakdown -->
+      <section class="card" style="grid-column: span 12;">
+        <h2>Detalhamento do Cálculo</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Item</th><th>Valor</th><th>Observação</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Salário real (base + adicionais)</td><td id="d_salario">R$ 0,00</td><td>Mensal</td></tr>
+            <tr><td>Encargos (soma de %)</td><td id="d_encargos">R$ 0,00</td><td id="d_encargos_pct">0%</td></tr>
+            <tr><td>Custos variáveis</td><td id="d_variaveis">R$ 0,00</td><td>Uniforme, transporte, exames, ferramentas</td></tr>
+            <tr><td>Rateio de fixos por funcionário</td><td id="d_rateio">R$ 0,00</td><td id="d_rateio_obs">Incluído</td></tr>
+            <tr><td><strong>Custo mensal por funcionário</strong></td><td id="d_custo_mensal"><strong>R$ 0,00</strong></td><td></td></tr>
+            <tr><td>Custo por hora (mensal ÷ horas)</td><td id="d_custo_hora">R$ 0,00</td><td id="d_horas">220 h/mês</td></tr>
+            <tr><td>Preço/hora com lucro</td><td id="d_preco_sem_imp">R$ 0,00</td><td>aplicado lucro %</td></tr>
+            <tr><td>Preço/hora final</td><td id="d_preco_final">R$ 0,00</td><td>+ impostos e taxas</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+    </div>
+
+    <footer>
+      Feito para Multprest — modo escuro, formato BRL. Ajuste os percentuais conforme seu regime tributário.
+    </footer>
+  </main>
+
+  <script>
+    // ===== Helpers de moeda e número (pt-BR) =====
+    const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    function toNumberBRL(v){
+      if(v===undefined||v===null) return 0;
+      v = String(v).trim();
+      if(!v) return 0;
+      // aceita valores já com R$, pontos e vírgulas
+      v = v.replace(/[^0-9,.-]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',', '.');
+      const n = parseFloat(v);
+      return isNaN(n) ? 0 : n;
+    }
+    function fmtBRL(n){ return BRL.format(isFinite(n)? n : 0); }
+    function pctToDec(id){ return (parseFloat(document.getElementById(id).value.replace(',', '.')) || 0)/100; }
+    function money(id){ return toNumberBRL(document.getElementById(id).value); }
+    function num(id){ return parseFloat(document.getElementById(id).value.replace(',', '.')) || 0; }
+
+    // formata inputs money ao sair do foco
+    function formatMoneyInputs(){
+      document.querySelectorAll('input[data-type="money"]').forEach(inp=>{
+        inp.addEventListener('blur', ()=>{ inp.value = fmtBRL(toNumberBRL(inp.value)); calc(); });
+        inp.addEventListener('input', ()=>{ calc(); });
+        // formatação inicial
+        inp.value = fmtBRL(toNumberBRL(inp.value));
+      });
+    }
+
+    // recalcula horas/mês quando horas/dia ou dias mudam
+    function calcHorasMes(){
+      const hd = num('horas_dia');
+      const dm = num('dias_mes');
+      const hm = Math.max(0, hd*dm);
+      const el = document.getElementById('horas_mes');
+      el.value = isFinite(hm) ? Math.round(hm) : 0;
+      return hm;
+    }
+
+    function somaEncargos(){
+      const p = ['p_inss','p_fgts','p_ferias','p_13','p_rescisao','p_outros']
+        .map(id=> parseFloat(document.getElementById(id).value.replace(',', '.')) || 0)
+        .reduce((a,b)=>a+b,0);
+      document.getElementById('encargos_total_text').textContent = `Total de encargos: ${p.toLocaleString('pt-BR', {maximumFractionDigits:2})}%`;
+      return p/100;
+    }
+
+    function calc(){
+      // dados base
+      const salario = money('salario_base') + money('insalubridade') + money('premio') + money('adicionais');
+      const encargosDec = somaEncargos();
+      const encargosVal = salario * encargosDec;
+
+      const variaveis = money('uniforme') + money('transporte') + money('exames') + money('ferramentas');
+
+      const incluirRateio = document.getElementById('incluir_rateio').value === 'sim';
+      const fixosTotal = money('fixos_total');
+      const qtdFunc = Math.max(1, Math.floor(num('qtd_funcionarios')));
+      const rateio = incluirRateio ? (fixosTotal / qtdFunc) : 0;
+
+      const horasMes = calcHorasMes();
+
+      const custoMensal = salario + encargosVal + variaveis + rateio;
+      const custoHora = horasMes > 0 ? (custoMensal / horasMes) : 0;
+
+      const lucro = pctToDec('p_lucro');
+      const impostos = pctToDec('p_impostos') + pctToDec('p_taxas');
+
+      const precoHoraSemImp = custoHora * (1 + lucro);
+      const precoHoraFinal = precoHoraSemImp * (1 + impostos);
+
+      const valorDiaFinal = precoHoraFinal * num('horas_dia');
+      const lucroHora = Math.max(0, precoHoraFinal - custoHora);
+      const lucroMes = lucroHora * horasMes;
+
+      // KPIs
+      document.getElementById('kpi_custo_hora').textContent = fmtBRL(custoHora);
+      document.getElementById('kpi_custo_mes').textContent = `/ mês: ${fmtBRL(custoMensal)}`;
+      document.getElementById('kpi_preco_hora_sem_imposto').textContent = fmtBRL(precoHoraSemImp);
+      document.getElementById('kpi_preco_hora_final').textContent = fmtBRL(precoHoraFinal);
+      document.getElementById('kpi_valor_dia').textContent = `/ dia: ${fmtBRL(valorDiaFinal)}`;
+      document.getElementById('kpi_lucro_hora').textContent = fmtBRL(lucroHora);
+      document.getElementById('kpi_lucro_mes').textContent = `/ mês: ${fmtBRL(lucroMes)}`;
+
+      // Detalhamento
+      document.getElementById('d_salario').textContent = fmtBRL(salario);
+      document.getElementById('d_encargos').textContent = fmtBRL(encargosVal);
+      document.getElementById('d_encargos_pct').textContent = (encargosDec*100).toLocaleString('pt-BR', {maximumFractionDigits:2}) + '%';
+      document.getElementById('d_variaveis').textContent = fmtBRL(variaveis);
+      document.getElementById('d_rateio').textContent = fmtBRL(rateio);
+      document.getElementById('d_rateio_obs').textContent = incluirRateio ? `Incluído (fixos / ${qtdFunc} funcionários)` : 'Excluído';
+      document.getElementById('d_custo_mensal').textContent = fmtBRL(custoMensal);
+      document.getElementById('d_custo_hora').textContent = fmtBRL(custoHora);
+      document.getElementById('d_horas').textContent = `${Math.round(horasMes)} h/mês`;
+      document.getElementById('d_preco_sem_imp').textContent = fmtBRL(precoHoraSemImp);
+      document.getElementById('d_preco_final').textContent = fmtBRL(precoHoraFinal);
+
+      // Projeção por equipe
+      const qtdEquipe = Math.max(1, Math.floor(num('qtd_equipe')));
+      const horasVendidas = Math.max(0, num('horas_vendidas'));
+
+      const CSP_total = custoHora * horasVendidas * qtdEquipe;
+      const Receita_total = precoHoraFinal * horasVendidas * qtdEquipe;
+      const Lucro_total = Receita_total - CSP_total;
+
+      document.getElementById('t_csp').textContent = fmtBRL(CSP_total);
+      document.getElementById('t_receita').textContent = fmtBRL(Receita_total);
+      document.getElementById('t_lucro').textContent = fmtBRL(Lucro_total);
+    }
+
+    function bindAll(){
+      // formatadores de moeda
+      formatMoneyInputs();
+      // escuta geral para inputs/seletores
+      document.querySelectorAll('input, select').forEach(el=>{
+        el.addEventListener('input', calc);
+      });
+      document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
+      document.getElementById('btnReset').addEventListener('click', ()=>{
+        document.querySelectorAll('input[type="number"]').forEach(el=>{ if(!el.readOnly) el.value = el.defaultValue; });
+        document.querySelectorAll('input[data-type="money"]').forEach(el=>{ el.value = el.defaultValue || 'R$ 0,00'; });
+        document.getElementById('incluir_rateio').value = 'sim';
+        calc();
+      });
+      calc();
+    }
+
+    document.addEventListener('DOMContentLoaded', bindAll);
+  </script>
+</body>
+</html>
