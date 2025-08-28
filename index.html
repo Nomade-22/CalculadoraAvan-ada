@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Calculadora CSP (Custo por Hora) — Multprest</title>
+  <title>Calculadora CSP (Custo por Hora) — Teste25</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -106,6 +106,27 @@
         <div class="val" id="kpi_lucro_hora">R$ 0,00</div>
         <div class="muted" id="kpi_lucro_mes">/ mês: R$ 0,00</div>
       </div>
+      <!-- Novos indicadores (mínima intervenção no layout existente) -->
+      <div class="item">
+        <h3>Preço por Hora (antes do desconto)</h3>
+        <div class="val" id="kpi_preco_antes_desc">R$ 0,00</div>
+        <div class="muted" id="kpi_valor_dia_bruto">/ dia</div>
+      </div>
+      <div class="item">
+        <h3>Margem Final (%)</h3>
+        <div class="val" id="kpi_margem_final">0,00%</div>
+        <div class="muted">sobre o preço final</div>
+      </div>
+      <div class="item">
+        <h3>Markup sobre Custo (%)</h3>
+        <div class="val" id="kpi_markup">0,00%</div>
+        <div class="muted">((Preço/Custo)-1)</div>
+      </div>
+      <div class="item">
+        <h3>Desconto aplicado (R$/h)</h3>
+        <div class="val" id="kpi_desconto_h">R$ 0,00</div>
+        <div class="muted">antes vs. final</div>
+      </div>
     </section>
 
     <div class="grid" style="margin-top:18px">
@@ -200,7 +221,7 @@
       </section>
 
       <!-- Preço de venda -->
-      <section class="card" style="grid-column: span 6;">
+      <section class="card" style="grid-column: span 6;" data-mod="pv">
         <h2>Preço de Venda</h2>
         <div class="inputs">
           <label>Lucro (%) sobre custo
@@ -211,6 +232,12 @@
           </label>
           <label>Troca de Nota / Taxas (%)
             <input id="p_taxas" type="number" step="0.01" value="12">
+          </label>
+          <label>Antecipação de recebíveis (%)
+            <input id="p_antecipacao" type="number" step="0.01" value="2.5">
+          </label>
+          <label>Desconto comercial ao cliente (%)
+            <input id="p_desconto" type="number" step="0.01" value="5">
           </label>
         </div>
       </section>
@@ -243,7 +270,7 @@
       </section>
 
       <!-- Breakdown -->
-      <section class="card" style="grid-column: span 12;">
+      <section class="card" style="grid-column: span 12%;">
         <h2>Detalhamento do Cálculo</h2>
         <table class="table">
           <thead>
@@ -257,7 +284,10 @@
             <tr><td><strong>Custo mensal por funcionário</strong></td><td id="d_custo_mensal"><strong>R$ 0,00</strong></td><td></td></tr>
             <tr><td>Custo por hora (mensal ÷ horas)</td><td id="d_custo_hora">R$ 0,00</td><td id="d_horas">220 h/mês</td></tr>
             <tr><td>Preço/hora com lucro</td><td id="d_preco_sem_imp">R$ 0,00</td><td>aplicado lucro %</td></tr>
-            <tr><td>Preço/hora final</td><td id="d_preco_final">R$ 0,00</td><td>+ impostos e taxas</td></tr>
+            <tr><td>Após impostos e taxas</td><td id="d_preco_tributado">R$ 0,00</td><td>+ impostos e taxas</td></tr>
+            <tr><td>Após antecipação</td><td id="d_preco_antecip">R$ 0,00</td><td>+ antecipação de recebíveis</td></tr>
+            <tr><td>Desconto aplicado</td><td id="d_desconto_val">R$ 0,00</td><td id="d_desconto_pct">-</td></tr>
+            <tr><td><strong>Preço/hora final ao cliente</strong></td><td id="d_preco_final"><strong>R$ 0,00</strong></td><td>valor após desconto</td></tr>
           </tbody>
         </table>
       </section>
@@ -265,7 +295,7 @@
     </div>
 
     <footer>
-      Feito para Multprest — modo escuro, formato BRL. Ajuste os percentuais conforme seu regime tributário.
+      Feito para todos — modo escuro, formato BRL. Ajuste os percentuais conforme seu regime tributário.
     </footer>
   </main>
 
@@ -276,27 +306,24 @@
       if(v===undefined||v===null) return 0;
       v = String(v).trim();
       if(!v) return 0;
-      // aceita valores já com R$, pontos e vírgulas
       v = v.replace(/[^0-9,.-]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',', '.');
       const n = parseFloat(v);
       return isNaN(n) ? 0 : n;
     }
     function fmtBRL(n){ return BRL.format(isFinite(n)? n : 0); }
+    function fmtPct(n){ return (isFinite(n)? n : 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%'; }
     function pctToDec(id){ return (parseFloat(document.getElementById(id).value.replace(',', '.')) || 0)/100; }
     function money(id){ return toNumberBRL(document.getElementById(id).value); }
     function num(id){ return parseFloat(document.getElementById(id).value.replace(',', '.')) || 0; }
 
-    // formata inputs money ao sair do foco
     function formatMoneyInputs(){
-      document.querySelectorAll('input[data-type="money"]').forEach(inp=>{
+      document.querySelectorAll('input[data-type=\"money\"]').forEach(inp=>{
         inp.addEventListener('blur', ()=>{ inp.value = fmtBRL(toNumberBRL(inp.value)); calc(); });
         inp.addEventListener('input', ()=>{ calc(); });
-        // formatação inicial
         inp.value = fmtBRL(toNumberBRL(inp.value));
       });
     }
 
-    // recalcula horas/mês quando horas/dia ou dias mudam
     function calcHorasMes(){
       const hd = num('horas_dia');
       const dm = num('dias_mes');
@@ -315,7 +342,6 @@
     }
 
     function calc(){
-      // dados base
       const salario = money('salario_base') + money('insalubridade') + money('premio') + money('adicionais');
       const encargosDec = somaEncargos();
       const encargosVal = salario * encargosDec;
@@ -334,15 +360,20 @@
 
       const lucro = pctToDec('p_lucro');
       const impostos = pctToDec('p_impostos') + pctToDec('p_taxas');
+      const antecipacao = pctToDec('p_antecipacao');
+      const desconto = pctToDec('p_desconto');
 
+      // Ordem: custo → lucro → impostos/taxas → antecipação → desconto
       const precoHoraSemImp = custoHora * (1 + lucro);
-      const precoHoraFinal = precoHoraSemImp * (1 + impostos);
+      const precoHoraTrib = precoHoraSemImp * (1 + impostos);
+      const precoHoraAntecip = precoHoraTrib * (1 + antecipacao);
+      const precoHoraFinal = precoHoraAntecip * (1 - desconto);
 
       const valorDiaFinal = precoHoraFinal * num('horas_dia');
       const lucroHora = Math.max(0, precoHoraFinal - custoHora);
       const lucroMes = lucroHora * horasMes;
 
-      // KPIs
+      // KPIs existentes
       document.getElementById('kpi_custo_hora').textContent = fmtBRL(custoHora);
       document.getElementById('kpi_custo_mes').textContent = `/ mês: ${fmtBRL(custoMensal)}`;
       document.getElementById('kpi_preco_hora_sem_imposto').textContent = fmtBRL(precoHoraSemImp);
@@ -351,7 +382,16 @@
       document.getElementById('kpi_lucro_hora').textContent = fmtBRL(lucroHora);
       document.getElementById('kpi_lucro_mes').textContent = `/ mês: ${fmtBRL(lucroMes)}`;
 
-      // Detalhamento
+      // Novos KPIs (apenas leitura, sem alterar lógica)
+      document.getElementById('kpi_preco_antes_desc').textContent = fmtBRL(precoHoraAntecip);
+      document.getElementById('kpi_valor_dia_bruto').textContent = `/ dia: ${fmtBRL(precoHoraAntecip * num('horas_dia'))}`;
+      const margemFinal = precoHoraFinal > 0 ? ((precoHoraFinal - custoHora) / precoHoraFinal) * 100 : 0;
+      const markup = custoHora > 0 ? ((precoHoraFinal / custoHora) - 1) * 100 : 0;
+      document.getElementById('kpi_margem_final').textContent = fmtPct(margemFinal);
+      document.getElementById('kpi_markup').textContent = fmtPct(markup);
+      document.getElementById('kpi_desconto_h').textContent = fmtBRL(precoHoraAntecip - precoHoraFinal);
+
+      // Detalhamento (inalterado)
       document.getElementById('d_salario').textContent = fmtBRL(salario);
       document.getElementById('d_encargos').textContent = fmtBRL(encargosVal);
       document.getElementById('d_encargos_pct').textContent = (encargosDec*100).toLocaleString('pt-BR', {maximumFractionDigits:2}) + '%';
@@ -362,9 +402,13 @@
       document.getElementById('d_custo_hora').textContent = fmtBRL(custoHora);
       document.getElementById('d_horas').textContent = `${Math.round(horasMes)} h/mês`;
       document.getElementById('d_preco_sem_imp').textContent = fmtBRL(precoHoraSemImp);
+      document.getElementById('d_preco_tributado').textContent = fmtBRL(precoHoraTrib);
+      document.getElementById('d_preco_antecip').textContent = fmtBRL(precoHoraAntecip);
+      document.getElementById('d_desconto_val').textContent = fmtBRL(precoHoraAntecip - precoHoraFinal);
+      document.getElementById('d_desconto_pct').textContent = `Desconto: ${(desconto*100).toLocaleString('pt-BR',{maximumFractionDigits:2})}%`;
       document.getElementById('d_preco_final').textContent = fmtBRL(precoHoraFinal);
 
-      // Projeção por equipe
+      // Projeção por equipe (inalterado)
       const qtdEquipe = Math.max(1, Math.floor(num('qtd_equipe')));
       const horasVendidas = Math.max(0, num('horas_vendidas'));
 
@@ -378,16 +422,14 @@
     }
 
     function bindAll(){
-      // formatadores de moeda
       formatMoneyInputs();
-      // escuta geral para inputs/seletores
       document.querySelectorAll('input, select').forEach(el=>{
         el.addEventListener('input', calc);
       });
       document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
       document.getElementById('btnReset').addEventListener('click', ()=>{
-        document.querySelectorAll('input[type="number"]').forEach(el=>{ if(!el.readOnly) el.value = el.defaultValue; });
-        document.querySelectorAll('input[data-type="money"]').forEach(el=>{ el.value = el.defaultValue || 'R$ 0,00'; });
+        document.querySelectorAll('input[type=\"number\"]').forEach(el=>{ if(!el.readOnly) el.value = el.defaultValue; });
+        document.querySelectorAll('input[data-type=\"money\"]').forEach(el=>{ el.value = el.defaultValue || 'R$ 0,00'; });
         document.getElementById('incluir_rateio').value = 'sim';
         calc();
       });
